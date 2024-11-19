@@ -95,6 +95,7 @@ def command(
         display_name = input_file.get("display_name")
         original_path = input_file.get("path")
         source_file_id = input_file.get("id")
+        data_type = f"openrelik:dfindexeddb:{browser_type}:{output_format}"
 
         if browser_type == "chromium":
             for subcommand in definitions.CHROMIUM_FILE_REGEX:
@@ -103,22 +104,15 @@ def command(
             else:
                 print(f"Unsupported {browser_type} file type for {display_name}.")
                 continue
-        elif browser_type == "firefox":
-            if re.search(definitions.FIREFOX_FILE_REGEX, display_name):
-                subcommand = "db"
-            else:
-                print(f"Unsupported {browser_type} file type for {display_name}.")
-                continue
-        elif browser_type == "safari":
-            if re.search(definitions.SAFARI_FILE_REGEX, display_name):
-                subcommand = "db"
-            else:
-                print(f"Unsupported {browser_type} file type for {display_name}.")
-                continue
+        elif (browser_type == "firefox" and
+              re.search(definitions.FIREFOX_FILE_REGEX, display_name)):
+            subcommand = "db"
+        elif (browser_type == "safari" and
+              re.search(definitions.SAFARI_FILE_REGEX, display_name)):
+            subcommand = "db"
         else:
             print(f"Unsupported {browser_type} file type for {display_name}.")
             continue
-        data_type = f"openrelik:dfindexeddb:{browser_type}:{output_format}"
 
         stdout_file = create_output_file(
             output_base_path=output_path,

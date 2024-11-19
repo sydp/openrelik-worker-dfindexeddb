@@ -44,7 +44,7 @@ TASK_METADATA = {
             "name": "output_format",
             "label": "Select output format",
             "description": "The output format",
-            "items": [ "JSON", "JSONL", "Python REPR" ],
+            "items": [ "JSON", "JSONL", "REPR" ],
             "type": "select",  # Types supported: text, textarea, checkbox
             "required": True,
         }

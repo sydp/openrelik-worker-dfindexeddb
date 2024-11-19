@@ -8,6 +8,7 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 # Install poetry and any other dependency that your worker needs.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-poetry \
+    python3-pip \
     # Add your dependencies here
     build-essential \
     python3-dev \
@@ -36,12 +37,12 @@ RUN poetry install --no-interaction --no-ansi
 # Copy files needed to build
 COPY . ./
 
+# install dfindexeddb
+RUN pip install dfindexeddb --break-system-packages
+
 # Install the worker and set environment to use the correct python interpreter.
 RUN poetry install && rm -rf $POETRY_CACHE_DIR
 ENV VIRTUAL_ENV=/app/.venv PATH="/openrelik/.venv/bin:$PATH"
-
-# install dfindexeddb
-RUN pip install dfindexeddb
 
 # Default command if not run from docker-compose (and command being overidden)
 CMD ["celery", "--app=src.tasks", "worker", "--task-events", "--concurrency=1", "--loglevel=INFO"]

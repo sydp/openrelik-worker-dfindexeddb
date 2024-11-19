@@ -23,32 +23,28 @@ from . import definitions
 
 
 # Task name used to register and route the task to the correct queue.
-TASK_NAME = "openrelik-worker-dfindexeddb.tasks.leveldb"
+TASK_NAME = "openrelik-worker-dfindexeddb.tasks.indexeddb"
 
 # Task metadata for registration in the core system.
 TASK_METADATA = {
-    "display_name": "dfindexeddb: leveldb",
-    "description": "Extracts LevelDB records using dfleveldb",
+    "display_name": "dfindexeddb: indexeddb",
+    "description": "Extracts IndexedDB records using dfindexeddb.",
     # Configuration that will be rendered as a web for in the UI, and any data entered
     # by the user will be available to the task function when executing (task_config).
     "task_config": [
         {
-            "name": "record_type",
-            "label": "Record Type",
-            "description": "The record type to extract",
-            "items": set(
-                definitions.LEVELDB_RECORD_TYPES["descriptor"] +
-                definitions.LEVELDB_RECORD_TYPES["ldb"] +
-                definitions.LEVELDB_RECORD_TYPES["log"]
-            ),
-            "type": "select",
+            "name": "browser_type",
+            "label": "Select browser type",
+            "description": "The browser type",
+            "items": [ "chromium", "firefox", "safari" ],
+            "type": "select",  # Types supported: text, textarea, checkbox
             "required": True,
         },
         {
             "name": "output_format",
             "label": "Select output format",
             "description": "The output format",
-            "items": [ "JSON", "JSONL", "REPR" ],
+            "items": [ "JSON", "JSONL", "Python REPR" ],
             "type": "select",  # Types supported: text, textarea, checkbox
             "required": True,
         }
@@ -65,7 +61,7 @@ def command(
     workflow_id: str | None = None,
     task_config: dict | None = None,
 ) -> str:
-    """Run dfleveldb on input files.
+    """Run dfindexeddb on input files.
 
     Args:
         pipe_result: Base64-encoded result from the previous Celery task, if any.
@@ -79,7 +75,7 @@ def command(
     """
     input_files = get_input_files(pipe_result, input_files or [])
     output_files = []
-    base_command = "dfleveldb"
+    base_command = "dfindexeddb"
 
     if not task_config:
         return create_task_result(
@@ -90,31 +86,43 @@ def command(
         )
 
     # parse task configuration
-    output_format = task_config.get("output_format", "").lower()
+    output_format = task_config.get("output_format", []).lower()
     output_config = definitions.OUTPUT_TYPES_EXTENSIONS[output_format]
     output_extension = output_config["extension"]
-    record_type = task_config.get("record_type", "")
+    browser_type = task_config.get("browser_type", "")
 
-    # parse input files
     for input_file in input_files or []:
         display_name = input_file.get("display_name")
         original_path = input_file.get("path")
         source_file_id = input_file.get("id")
-        for file_regex in definitions.LEVELDB_FILE_REGEX:
-            if re.search(definitions.LEVELDB_FILE_REGEX[file_regex], display_name):
-                subcommand = file_regex
-                break
+
+        if browser_type == "chromium":
+            for subcommand in definitions.CHROMIUM_FILE_REGEX:
+                if re.search(definitions.CHROMIUM_FILE_REGEX[subcommand], display_name):
+                    break
+            else:
+                print(f"Unsupported {browser_type} file type for {display_name}.")
+                continue
+        elif browser_type == "firefox":
+            if re.search(definitions.FIREFOX_FILE_REGEX, display_name):
+                subcommand = "db"
+            else:
+                print(f"Unsupported {browser_type} file type for {display_name}.")
+                continue
+        elif browser_type == "safari":
+            if re.search(definitions.SAFARI_FILE_REGEX, display_name):
+                subcommand = "db"
+            else:
+                print(f"Unsupported {browser_type} file type for {display_name}.")
+                continue
         else:
-            print(f"Unsupported file type for {display_name}.")
+            print(f"Unsupported {browser_type} file type for {display_name}.")
             continue
-        if record_type not in definitions.LEVELDB_RECORD_TYPES[subcommand]:
-            print(f"Unsupported record type {record_type} for {subcommand} file.")
-            continue
-        data_type = f"openrelik:dfleveldb:{record_type}:{output_format}"
+        data_type = f"openrelik:dfindexeddb:{browser_type}:{output_format}"
 
         stdout_file = create_output_file(
             output_base_path=output_path,
-            display_name=display_name,
+            display_name=f"{display_name}.{browser_type}",
             extension=output_extension,
             data_type=data_type,
             original_path=original_path,
@@ -133,8 +141,8 @@ def command(
             subcommand,
             "-s",
             original_path,
-            "-t",
-            record_type,
+            "--format",
+            browser_type,
             "-o",
             output_format
         ]

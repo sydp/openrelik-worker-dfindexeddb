@@ -27,6 +27,7 @@ celery = Celery(
     broker=REDIS_URL,
     backend=REDIS_URL,
     include=[
+        "src.indexeddb",
         "src.leveldb",
     ]
 )
